@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>ボカロ曲ルーレット（スマホ最適化＋50曲・2020年以降多め）</title>
+<style>
+  :root{ --bg:#0f1115; --panel:#171a21; --muted:#9aa4b2; --text:#e6eaf0; --accent:#7aa2f7; --danger:#f7768e; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{position:sticky;top:0;z-index:10;background:var(--panel);padding:10px;border-bottom:1px solid #232838;text-align:center}
+  h1{font-size:16px;margin:0;}
+  .wrap{padding:10px;}
+  .panel{background:var(--panel);border:1px solid #232838;border-radius:12px;padding:10px;margin-bottom:10px}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+  input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #2a2f3d;background:#0c0f14;color:var(--text);font-size:14px}
+  select[multiple]{min-height:96px}
+  button{cursor:pointer;margin-top:6px}
+  button.btn-primary{background:var(--accent);color:#0a0e1a;font-weight:bold}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{border:1px solid #2a2f3d;border-radius:999px;padding:4px 8px;font-size:12px;background:#0c0f14}
+  canvas{width:100%;max-width:340px;height:auto;display:block;margin:0 auto;background:#0c0f14;border-radius:12px;border:1px dashed #2a2f3d}
+  .result{font-size:18px;font-weight:bold;margin-top:8px;text-align:center}
+  .pill{display:inline-block;border:1px solid #2a2f3d;border-radius:999px;padding:4px 8px;font-size:12px;margin:2px;background:#0c0f14}
+  .row{display:flex;gap:8px}
+  details>summary{cursor:pointer;list-style:none}
+  details>summary::-webkit-details-marker{display:none}
+  .test-pass{color:#9ece6a}
+  .test-fail{color:#f7768e}
+</style>
+</head>
+<body>
+<header><h1>🎰 ボカロ曲ルーレット</h1></header>
+<div class="wrap">
+  <div class="panel">
+    <label>年代フィルタ（例: 2020〜2025）</label>
+    <div class="row">
+      <input id="minYear" type="number" placeholder="最小年" />
+      <input id="maxYear" type="number" placeholder="最大年" />
+    </div>
+    <label style="margin-top:6px">プロデューサー（複数選択可）</label>
+    <select id="producerFilter" multiple></select>
+    <label style="margin-top:6px">検索（曲名/ボカロ）</label>
+    <input id="q" type="text" placeholder="例: 初音ミク / DECO*27 / Kanaria" />
+    <button class="btn-primary" id="applyBtn">フィルタ適用</button>
+    <div class="chips" id="activeChips"></div>
+  </div>
+
+  <div class="panel" style="text-align:center">
+    <canvas id="wheel" width="320" height="320" aria-label="ルーレット"></canvas>
+    <button class="btn-primary" id="spinBtn">回す</button>
+    <div class="result" id="resultTitle">—</div>
+    <div id="resultMeta"></div>
+    <div style="margin-top:8px">
+      <button id="ytBtn">YouTube検索</button>
+      <button id="nicoBtn">ニコ動検索</button>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-top:8px">注：年は代表的な公開年を記載。厳密な初出年は公式動画等でご確認ください。</p>
+  </div>
+
+  <details class="panel">
+    <summary><strong>🧪 内蔵セルフテスト</strong>（タップで表示）</summary>
+    <div id="testOutput" style="font-size:13px;line-height:1.6;margin-top:6px"></div>
+  </details>
+</div>
+
+<script>
+'use strict';
+// ===================== 先に定数を定義（TAU を先頭で定義） =====================
+const TAU = Math.PI * 2; // ← これが draw()/spin() より前にあることが重要
+
+// ====== サンプル曲データ（50曲、2020年以降を増量） ======
+const defaultSongs = [
+  // --- 2020 以降 ---
+  {title:'KING', producer:'Kanaria', year:2020, vocaloid:['GUMI']},
+  {title:'グッバイ宣言', producer:'Chinozo', year:2020, vocaloid:['flower']},
+  {title:'アニマル', producer:'DECO*27', year:2020, vocaloid:['初音ミク']},
+  {title:'限りなく灰色へ', producer:'すりぃ', year:2020, vocaloid:['初音ミク']},
+  {title:'ニビョウカン', producer:'かいりきベア', year:2020, vocaloid:['初音ミク']},
+  {title:'愛言葉Ⅳ', producer:'DECO*27', year:2020, vocaloid:['初音ミク']},
+  {title:'フォニイ', producer:'ツミキ', year:2021, vocaloid:['可不 (KAFU)']},
+  {title:'神っぽいな', producer:'ピノキオピー', year:2021, vocaloid:['初音ミク']},
+  {title:'ヴァンパイア', producer:'DECO*27', year:2021, vocaloid:['初音ミク']},
+  {title:'シンデレラ', producer:'DECO*27', year:2021, vocaloid:['初音ミク']},
+  {title:'QUEEN', producer:'Kanaria', year:2021, vocaloid:['GUMI']},
+  {title:'EYE', producer:'Kanaria', year:2021, vocaloid:['GUMI']},
+  {title:'エゴロック', producer:'すりぃ', year:2021, vocaloid:['可不 (KAFU)']},
+  {title:'トンデモワンダーズ', producer:'sasakure.UK', year:2021, vocaloid:['初音ミク']},
+  {title:'ダーリンダンス', producer:'かいりきベア', year:2021, vocaloid:['初音ミク']},
+  {title:'エンヴィーベイビー', producer:'Kanaria', year:2021, vocaloid:['flower']},
+  {title:'酔いどれ知らず', producer:'Kanaria', year:2022, vocaloid:['GUMI']},
+  {title:'マーシャル・マキシマイザー', producer:'柊マグネタイト', year:2022, vocaloid:['可不 (KAFU)']},
+  {title:'強風オールバック', producer:'ゆこぴ', year:2022, vocaloid:['初音ミク']},
+  {title:'バグ', producer:'かいりきベア', year:2022, vocaloid:['初音ミク']},
+  {title:'ラビットホール', producer:'DECO*27', year:2023, vocaloid:['初音ミク']},
+  {title:'ラヴィ', producer:'すりぃ', year:2023, vocaloid:['可不 (KAFU)']},
+  {title:'群青讃歌', producer:'DECO*27', year:2021, vocaloid:['初音ミク']},
+  {title:'ただ声一つ', producer:'いよわ', year:2020, vocaloid:['可不 (KAFU)']},
+  {title:'きゅうくらりん', producer:'いよわ', year:2021, vocaloid:['可不 (KAFU)']},
+
+  // --- 定番（補完） ---
+  {title:'ゴーストルール', producer:'DECO*27', year:2016, vocaloid:['初音ミク']},
+  {title:'乙女解剖', producer:'DECO*27', year:2019, vocaloid:['初音ミク']},
+  {title:'ヒバナ', producer:'DECO*27', year:2017, vocaloid:['初音ミク']},
+  {title:'妄想感傷代償連盟', producer:'DECO*27', year:2016, vocaloid:['初音ミク']},
+  {title:'ベノム', producer:'かいりきベア', year:2018, vocaloid:['flower']},
+  {title:'劣等上等', producer:'Giga & Reol', year:2018, vocaloid:['鏡音リン','鏡音レン']},
+  {title:'ヒビカセ', producer:'Giga', year:2014, vocaloid:['初音ミク']},
+  {title:'ジャンキーナイトタウンオーケストラ', producer:'すりぃ', year:2019, vocaloid:['初音ミク']},
+  {title:'テレキャスタービーボーイ', producer:'すりぃ', year:2018, vocaloid:['初音ミク']},
+  {title:'砂の惑星', producer:'ハチ', year:2017, vocaloid:['初音ミク']},
+  {title:'マトリョシカ', producer:'ハチ', year:2010, vocaloid:['初音ミク','GUMI']},
+  {title:'千本桜', producer:'黒うさP', year:2011, vocaloid:['初音ミク']},
+  {title:'からくりピエロ', producer:'40mP', year:2011, vocaloid:['初音ミク']},
+  {title:'恋愛裁判', producer:'40mP', year:2014, vocaloid:['初音ミク']},
+  {title:'メランコリック', producer:'Junky', year:2011, vocaloid:['鏡音リン']},
+  {title:'ロストワンの号哭', producer:'Neru', year:2013, vocaloid:['鏡音リン']},
+  {title:'Tell Your World', producer:'kz (livetune)', year:2012, vocaloid:['初音ミク']},
+  {title:'Calc.', producer:'ジミーサムP', year:2010, vocaloid:['初音ミク']},
+  {title:'天ノ弱', producer:'164', year:2011, vocaloid:['GUMI']},
+  {title:'ハッピーシンセサイザ', producer:'EasyPop', year:2010, vocaloid:['GUMI','巡音ルカ']},
+  {title:'ルカルカ★ナイトフィーバー', producer:'samfree', year:2010, vocaloid:['巡音ルカ']},
+  {title:'メルト', producer:'ryo (supercell)', year:2007, vocaloid:['初音ミク']},
+  {title:'ワールドイズマイン', producer:'ryo (supercell)', year:2008, vocaloid:['初音ミク']},
+  {title:'ロミオとシンデレラ', producer:'doriko', year:2009, vocaloid:['初音ミク']},
+  {title:'Just Be Friends', producer:'Dixie Flatline', year:2009, vocaloid:['巡音ルカ']}
+];
+
+let songs = [...defaultSongs];
+let filtered = [...songs];
+let lastPick = null;
+let spinning = false; // 連打ガード
+let angle = 0;        // 現在角
+
+const els = {
+  minYear: document.getElementById('minYear'),
+  maxYear: document.getElementById('maxYear'),
+  producerFilter: document.getElementById('producerFilter'),
+  q: document.getElementById('q'),
+  applyBtn: document.getElementById('applyBtn'),
+  wheel: document.getElementById('wheel'),
+  spinBtn: document.getElementById('spinBtn'),
+  resultTitle: document.getElementById('resultTitle'),
+  resultMeta: document.getElementById('resultMeta'),
+  ytBtn: document.getElementById('ytBtn'),
+  nicoBtn: document.getElementById('nicoBtn'),
+  chips: document.getElementById('activeChips'),
+};
+
+// ===================== 初期化 =====================
+(function init(){
+  els.minYear.value = 2020;
+  els.maxYear.value = new Date().getFullYear();
+  renderProducerOptions();
+  applyFilters();
+  runTests(); // ← セルフテスト実行
+})();
+
+// ===================== イベント =====================
+els.applyBtn.addEventListener('click', ()=>{ if(!spinning){ applyFilters(); angle = 0; draw(); } });
+els.spinBtn.addEventListener('click', spin);
+els.ytBtn.addEventListener('click', ()=>openSearch('yt'));
+els.nicoBtn.addEventListener('click', ()=>openSearch('nico'));
+
+function renderProducerOptions(){
+  const set = new Set(songs.map(s=>s.producer));
+  els.producerFilter.innerHTML = '';
+  Array.from(set).sort((a,b)=>a.localeCompare(b,'ja')).forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value=p; opt.textContent=p; els.producerFilter.appendChild(opt);
+  });
+}
+
+function applyFilters(){
+  const minY = parseInt(els.minYear.value)||0;
+  const maxY = parseInt(els.maxYear.value)||9999;
+  const qs = (els.q.value||'').trim().toLowerCase();
+  const pros = Array.from(els.producerFilter.selectedOptions).map(o=>o.value);
+
+  filtered = songs.filter(s=>{
+    const byYear = !s.year || (s.year>=minY && s.year<=maxY);
+    const byP = pros.length===0 || pros.includes(s.producer);
+    const byQ = !qs || s.title.toLowerCase().includes(qs) || s.producer.toLowerCase().includes(qs) || (s.vocaloid||[]).some(v=>v.toLowerCase().includes(qs));
+    return byYear && byP && byQ;
+  });
+  renderChips({minY,maxY,pros,qs});
+  draw();
+}
+
+function renderChips({minY,maxY,pros,qs}){
+  els.chips.innerHTML = '';
+  const add = (t)=>{const s=document.createElement('span');s.className='chip';s.textContent=t;els.chips.appendChild(s)}
+  add(`候補: ${filtered.length}曲`);
+  add(`年: ${minY}〜${maxY}`);
+  if(pros.length) add(`P: ${pros.join(' / ')}`);
+  if(qs) add(`検索: ${qs}`);
+}
+
+// ===================== ルーレット描画 =====================
+function draw(){
+  const c=els.wheel; const ctx=c.getContext('2d');
+  const N=filtered.length;
+  ctx.clearRect(0,0,c.width,c.height);
+  if(N===0){ctx.fillStyle='#9aa4b2';ctx.textAlign='center';ctx.font='14px system-ui';ctx.fillText('候補なし',c.width/2,c.height/2);return;}
+  const cx=c.width/2,cy=c.height/2,r=Math.min(c.width,c.height)*0.45;
+  const step=TAU/N;
+  for(let i=0;i<N;i++){
+    const start=angle+i*step,end=start+step;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();
+    ctx.fillStyle=`hsl(${(i*360/N)|0} 70% ${i%2?48:36}%)`;ctx.fill();
+    ctx.strokeStyle='#0b0e14';ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate((start+end)/2);
+    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle='#e6eaf0';ctx.font='12px system-ui';
+    const label = filtered[i].title.length>14? filtered[i].title.slice(0,13)+'…' : filtered[i].title;
+    ctx.fillText(label,r-6,0);
+    ctx.restore();
+  }
+  // pointer
+  ctx.beginPath();ctx.moveTo(cx,cy-r-2);ctx.lineTo(cx-10,cy-r+18);ctx.lineTo(cx+10,cy-r+18);ctx.closePath();ctx.fillStyle='red';ctx.fill();
+}
+
+function norm(a){ a%=TAU; if(a<0) a+=TAU; return a; }
+
+// ===================== スピン =====================
+function spin(){
+  if(spinning) return;
+  if(filtered.length===0){ alert('候補がありません'); return; }
+  spinning = true; els.spinBtn.disabled = true;
+
+  const N=filtered.length; const step=TAU/N;
+  const target = Math.floor(Math.random()*N);
+  const targetAngleAtTop = (Math.PI*1.5) - (target*step + step/2); // 上端で停止
+
+  const curr = norm(angle);
+  const delta = norm(targetAngleAtTop - curr); // 0..TAU
+  const extraTurns = 6; // 6回転以上
+  const startAngle = angle;
+  const finalAngle = startAngle + delta + extraTurns*TAU;
+
+  const start = performance.now();
+  const dur = 3000; // 3s
+  (function tick(now){
+    const t = Math.min(1,(now-start)/dur);
+    const eased = 1 - Math.pow(1-t,3); // easeOutCubic
+    angle = startAngle + (finalAngle - startAngle) * eased;
+    draw();
+    if(t<1){ requestAnimationFrame(tick); }
+    else{ spinning=false; els.spinBtn.disabled = false; showResult(filtered[target]); }
+  })(performance.now());
+}
+
+function showResult(song){
+  lastPick=song;
+  els.resultTitle.textContent=song.title;
+  els.resultMeta.innerHTML=`<span class="pill">${song.producer}</span> ${song.year?`<span class="pill">${song.year}年</span>`:''} ${(song.vocaloid||[]).length?`<span class=\"pill\">${song.vocaloid.join(' / ')}</span>`:''}`;
+}
+
+function openSearch(kind){
+  if(!lastPick){alert('先に回してください');return;}
+  const q=`${lastPick.title} ${lastPick.producer} VOCALOID`;
+  const url=kind==='yt'?`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`:`https://www.nicovideo.jp/search/${encodeURIComponent(q)}`;
+  window.open(url,'_blank');
+}
+
+// ===================== 🧪 セルフテスト =====================
+function runTests(){
+  const out = document.getElementById('testOutput');
+  const results = [];
+  const pass = (name)=>results.push(`<div class="test-pass">✔ ${name}</div>`);
+  const fail = (name,err)=>results.push(`<div class="test-fail">✖ ${name} — ${err}</div>`);
+
+  // Test 1: TAU の定義順・値
+  try {
+    if (typeof TAU === 'number' && TAU > 6.0 && TAU < 7.0) pass('TAU 定義・値が正しい（先頭定義）');
+    else fail('TAU 定義', `TAU=${TAU}`);
+  } catch(e){ fail('TAU 定義', e.message); }
+
+  // Test 2: draw() が例外なく実行できる
+  try {
+    draw(); pass('draw() 初期描画に成功');
+  } catch(e){ fail('draw() 初期描画', e.message); }
+
+  // Test 3: 年代フィルタで 2050〜2051 にすると 0 曲になる（データ上2023まで）
+  try {
+    const bakMin = els.minYear.value, bakMax = els.maxYear.value;
+    els.minYear.value = 2050; els.maxYear.value = 2051; applyFilters();
+    if (filtered.length === 0) pass('年代フィルタ: 将来年で 0 件になる');
+    else fail('年代フィルタ', `期待:0 実際:${filtered.length}`);
+    els.minYear.value = bakMin; els.maxYear.value = bakMax; applyFilters();
+  } catch(e){ fail('年代フィルタ テスト', e.message); }
+
+  // Test 4: 目標角計算が有限値
+  try {
+    const N = Math.max(1, filtered.length);
+    const step = TAU / N;
+    const target = Math.floor(Math.random()*N);
+    const targetAngleAtTop = (Math.PI*1.5) - (target*step + step/2);
+    if (Number.isFinite(targetAngleAtTop)) pass('角度計算が有限値');
+    else fail('角度計算', 'NaN/Infinity');
+  } catch(e){ fail('角度計算', e.message); }
+
+  out.innerHTML = results.join('');
+}
+</script>
+</body>
+</html>
