@@ -3,34 +3,39 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>ボカロ曲ルーレット（スマホ最適化＋50曲・2020年以降多め）</title>
+<title>みーこのためのボカロルーレット</title>
 <style>
-  :root{ --bg:#0f1115; --panel:#171a21; --muted:#9aa4b2; --text:#e6eaf0; --accent:#7aa2f7; --danger:#f7768e; }
+  :root{
+    --bg: linear-gradient(180deg,#fff8fc 0%, #f0f9ff 100%);
+    --panel:#ffffff; --muted:#6b7280; --text:#1f2937; 
+    --accent:#ff66b3; --accent-2:#60a5fa; --accent-3:#10b981; --danger:#ef4444; --border:#ffd3ea;
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
-  header{position:sticky;top:0;z-index:10;background:var(--panel);padding:10px;border-bottom:1px solid #232838;text-align:center}
-  h1{font-size:16px;margin:0;}
-  .wrap{padding:10px;}
-  .panel{background:var(--panel);border:1px solid #232838;border-radius:12px;padding:10px;margin-bottom:10px}
-  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
-  input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #2a2f3d;background:#0c0f14;color:var(--text);font-size:14px}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}  
+  header{position:sticky;top:0;z-index:10;background:var(--panel);padding:12px;border-bottom:2px solid var(--border);text-align:center}
+  h1{font-size:18px;margin:0;}
+  .wrap{padding:12px;}
+  .panel{background:var(--panel);border:2px solid var(--border);border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(255,102,179,.08)}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+  input,select,button{width:100%;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;color:var(--text);font-size:14px}
   select[multiple]{min-height:96px}
-  button{cursor:pointer;margin-top:6px}
-  button.btn-primary{background:var(--accent);color:#0a0e1a;font-weight:bold}
+  button{cursor:pointer;margin-top:8px}
+  button.btn-primary{background:var(--accent);color:white;font-weight:700;border:1px solid #ff4da6;box-shadow:0 4px 10px rgba(255,102,179,.25)}
+  button.btn-primary:active{transform:translateY(1px)}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-  .chip{border:1px solid #2a2f3d;border-radius:999px;padding:4px 8px;font-size:12px;background:#0c0f14}
-  canvas{width:100%;max-width:340px;height:auto;display:block;margin:0 auto;background:#0c0f14;border-radius:12px;border:1px dashed #2a2f3d}
-  .result{font-size:18px;font-weight:bold;margin-top:8px;text-align:center}
-  .pill{display:inline-block;border:1px solid #2a2f3d;border-radius:999px;padding:4px 8px;font-size:12px;margin:2px;background:#0c0f14}
+  .chip{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;background:#fff0f7}
+  canvas{width:100%;max-width:360px;height:auto;display:block;margin:0 auto;background:#ffffff;border-radius:16px;border:2px dashed var(--border)}
+  .result{font-size:18px;font-weight:800;margin-top:10px;text-align:center}
+  .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;margin:2px;background:#fef3ff}
   .row{display:flex;gap:8px}
   details>summary{cursor:pointer;list-style:none}
   details>summary::-webkit-details-marker{display:none}
-  .test-pass{color:#9ece6a}
-  .test-fail{color:#f7768e}
+  .test-pass{color:#16a34a}
+  .test-fail{color:#dc2626}
 </style>
 </head>
 <body>
-<header><h1>🎰 ボカロ曲ルーレット</h1></header>
+<header><h1>🎰 みーこのためのボカロルーレット</h1></header>
 <div class="wrap">
   <div class="panel">
     <label>年代フィルタ（例: 2020〜2025）</label>
@@ -51,9 +56,9 @@
     <button class="btn-primary" id="spinBtn">回す</button>
     <div class="result" id="resultTitle">—</div>
     <div id="resultMeta"></div>
-    <div style="margin-top:8px">
-      <button id="ytBtn">YouTube検索</button>
-      <button id="nicoBtn">ニコ動検索</button>
+    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:360px;margin-inline:auto">
+      <button id="ytBtn" class="btn-primary" style="background:var(--accent-2);border-color:#3b82f6;box-shadow:0 4px 10px rgba(59,130,246,.18)">YouTube検索</button>
+      <button id="nicoBtn" class="btn-primary" style="background:var(--accent-3);border-color:#10b981;box-shadow:0 4px 10px rgba(16,185,129,.18)">ニコ動検索</button>
     </div>
     <p style="color:var(--muted);font-size:12px;margin-top:8px">注：年は代表的な公開年を記載。厳密な初出年は公式動画等でご確認ください。</p>
   </div>
@@ -67,7 +72,7 @@
 <script>
 'use strict';
 // ===================== 先に定数を定義（TAU を先頭で定義） =====================
-const TAU = Math.PI * 2; // ← これが draw()/spin() より前にあることが重要
+const TAU = Math.PI * 2; // ← draw()/spin() より前にあることが重要
 
 // ====== サンプル曲データ（50曲、2020年以降を増量） ======
 const defaultSongs = [
@@ -145,6 +150,7 @@ const els = {
   ytBtn: document.getElementById('ytBtn'),
   nicoBtn: document.getElementById('nicoBtn'),
   chips: document.getElementById('activeChips'),
+  testOut: document.getElementById('testOutput'),
 };
 
 // ===================== 初期化 =====================
@@ -153,7 +159,7 @@ const els = {
   els.maxYear.value = new Date().getFullYear();
   renderProducerOptions();
   applyFilters();
-  runTests(); // ← セルフテスト実行
+  runTests(); // セルフテスト実行
 })();
 
 // ===================== イベント =====================
@@ -207,16 +213,18 @@ function draw(){
   for(let i=0;i<N;i++){
     const start=angle+i*step,end=start+step;
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();
-    ctx.fillStyle=`hsl(${(i*360/N)|0} 70% ${i%2?48:36}%)`;ctx.fill();
-    ctx.strokeStyle='#0b0e14';ctx.lineWidth=2;ctx.stroke();
+    // カラフルでポップな配色（彩度と明度を高めに）
+    ctx.fillStyle=`hsl(${(i*360/N)|0} 85% ${i%2?60:50}%)`;
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=2;ctx.stroke();
     ctx.save();ctx.translate(cx,cy);ctx.rotate((start+end)/2);
-    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle='#e6eaf0';ctx.font='12px system-ui';
+    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle='#ffffff';ctx.font='12px system-ui';
     const label = filtered[i].title.length>14? filtered[i].title.slice(0,13)+'…' : filtered[i].title;
     ctx.fillText(label,r-6,0);
     ctx.restore();
   }
-  // pointer
-  ctx.beginPath();ctx.moveTo(cx,cy-r-2);ctx.lineTo(cx-10,cy-r+18);ctx.lineTo(cx+10,cy-r+18);ctx.closePath();ctx.fillStyle='red';ctx.fill();
+  // pointer（ポップカラー）
+  ctx.beginPath();ctx.moveTo(cx,cy-r-2);ctx.lineTo(cx-12,cy-r+20);ctx.lineTo(cx+12,cy-r+20);ctx.closePath();ctx.fillStyle='#ff3d8b';ctx.fill();
 }
 
 function norm(a){ a%=TAU; if(a<0) a+=TAU; return a; }
@@ -264,40 +272,23 @@ function openSearch(kind){
 
 // ===================== 🧪 セルフテスト =====================
 function runTests(){
-  const out = document.getElementById('testOutput');
-  const results = [];
+  const out = els.testOut; const results = [];
   const pass = (name)=>results.push(`<div class="test-pass">✔ ${name}</div>`);
   const fail = (name,err)=>results.push(`<div class="test-fail">✖ ${name} — ${err}</div>`);
 
-  // Test 1: TAU の定義順・値
-  try {
-    if (typeof TAU === 'number' && TAU > 6.0 && TAU < 7.0) pass('TAU 定義・値が正しい（先頭定義）');
-    else fail('TAU 定義', `TAU=${TAU}`);
-  } catch(e){ fail('TAU 定義', e.message); }
+  // Test 1: TAU 定義・値
+  try { if (typeof TAU==='number' && TAU>6 && TAU<7) pass('TAU 定義・値が正しい'); else fail('TAU 定義', `TAU=${TAU}`);} catch(e){ fail('TAU 定義', e.message); }
 
-  // Test 2: draw() が例外なく実行できる
-  try {
-    draw(); pass('draw() 初期描画に成功');
-  } catch(e){ fail('draw() 初期描画', e.message); }
+  // Test 2: 初期描画
+  try { draw(); pass('draw() 初期描画に成功'); } catch(e){ fail('draw() 初期描画', e.message); }
 
-  // Test 3: 年代フィルタで 2050〜2051 にすると 0 曲になる（データ上2023まで）
-  try {
-    const bakMin = els.minYear.value, bakMax = els.maxYear.value;
-    els.minYear.value = 2050; els.maxYear.value = 2051; applyFilters();
-    if (filtered.length === 0) pass('年代フィルタ: 将来年で 0 件になる');
-    else fail('年代フィルタ', `期待:0 実際:${filtered.length}`);
-    els.minYear.value = bakMin; els.maxYear.value = bakMax; applyFilters();
-  } catch(e){ fail('年代フィルタ テスト', e.message); }
+  // Test 3: 年代フィルタ将来年→0件
+  try { const b1=els.minYear.value, b2=els.maxYear.value; els.minYear.value=2050; els.maxYear.value=2051; applyFilters();
+        if(filtered.length===0) pass('年代フィルタ: 将来年で 0 件'); else fail('年代フィルタ', `実際:${filtered.length}`);
+        els.minYear.value=b1; els.maxYear.value=b2; applyFilters(); } catch(e){ fail('年代フィルタ', e.message); }
 
-  // Test 4: 目標角計算が有限値
-  try {
-    const N = Math.max(1, filtered.length);
-    const step = TAU / N;
-    const target = Math.floor(Math.random()*N);
-    const targetAngleAtTop = (Math.PI*1.5) - (target*step + step/2);
-    if (Number.isFinite(targetAngleAtTop)) pass('角度計算が有限値');
-    else fail('角度計算', 'NaN/Infinity');
-  } catch(e){ fail('角度計算', e.message); }
+  // Test 4: 角度計算が有限
+  try { const N=Math.max(1,filtered.length); const step=TAU/N; const t=Math.floor(Math.random()*N); const a=(Math.PI*1.5)-(t*step+step/2); if(Number.isFinite(a)) pass('角度計算=有限'); else fail('角度計算','NaN/Inf'); } catch(e){ fail('角度計算', e.message); }
 
   out.innerHTML = results.join('');
 }
